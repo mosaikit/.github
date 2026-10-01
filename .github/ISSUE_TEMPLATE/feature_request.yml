@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a new feature or an improvement
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For open-ended ideas, a thread in [Discussions](https://github.com/mosaikit/mosaikit/discussions)
+        is often the best start.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: The solution you would like
+      description: How it could work, from the point of view of the user or the plugin developer.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core (kernel)
+        - Plugin API and SDKs
+        - Distribution (container image, Helm chart, portable)
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other solutions or workarounds you thought of. Could it be a plugin instead?
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself
