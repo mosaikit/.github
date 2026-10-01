@@ -146,7 +146,8 @@ jobs:
           rm -f "$keys/$KEY_NAME.key.pem"
 
       - name: Checksum
-        run: (cd dist && sha256sum ./*.zip | sed 's# \./# #' > "${{ steps.package.outputs.file }}.sha256")
+        run: |
+          (cd dist && sha256sum ./*.zip | sed 's# \./# #' > "${{ steps.package.outputs.file }}.sha256")
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: plugin-package
