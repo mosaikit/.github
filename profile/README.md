@@ -39,8 +39,7 @@ backend services and the database.
 | --- | --- |
 | [**mosaikit**](https://github.com/mosaikit/mosaikit) | The core: kernel, plugin API (Java and TypeScript SDKs), container image, Helm chart, portable distribution and documentation |
 | [**.github**](https://github.com/mosaikit/.github) | This profile and the community files shared by every repository of the organization |
-| [**mosaikit.github.io**](https://github.com/mosaikit/mosaikit.github.io) | The [site](https://mosaikit.github.io/) of the project and its marketplace of plugins |
-| [**catalog**](https://github.com/mosaikit/catalog) | The signed catalog of the plugins published by the project, ready to add to an installation |
+| [**mosaikit.github.io**](https://github.com/mosaikit/mosaikit.github.io) | The [site](https://mosaikit.github.io/) of the project, with the [marketplace](https://mosaikit.github.io/marketplace/) and the signed catalog of the plugins (`https://mosaikit.github.io/catalog/`) to add to an installation |
 
 Coming next: the first **official plugins**, published in the catalog and listed in the
 [marketplace](https://mosaikit.github.io/marketplace/).
