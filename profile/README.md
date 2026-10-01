@@ -39,16 +39,18 @@ backend services and the database.
 | --- | --- |
 | [**mosaikit**](https://github.com/mosaikit/mosaikit) | The core: kernel, plugin API (Java and TypeScript SDKs), container image, Helm chart, portable distribution and documentation |
 | [**.github**](https://github.com/mosaikit/.github) | This profile and the community files shared by every repository of the organization |
+| [**mosaikit.github.io**](https://github.com/mosaikit/mosaikit.github.io) | The [site](https://mosaikit.github.io/) of the project and its marketplace of plugins |
+| [**catalog**](https://github.com/mosaikit/catalog) | The signed catalog of the plugins published by the project, ready to add to an installation |
 
-Coming next: a **plugin template** to start a new plugin in one click, the first **official
-plugins**, and a **marketplace** to discover and install plugins from the community.
+Coming next: the first **official plugins**, published in the catalog and listed in the
+[marketplace](https://mosaikit.github.io/marketplace/).
 
 ## Get started
 
 - **Try it:** download the latest version from the
   [releases](https://github.com/mosaikit/mosaikit/releases) — container image, Helm chart and
   portable archives for Windows, macOS and Linux.
-- **Read the docs:** the [documentation](https://github.com/mosaikit/mosaikit/tree/main/docs)
+- **Read the docs:** the [documentation](https://mosaikit.github.io/mosaikit/)
   covers installation, configuration and plugin development.
 - **Build a plugin:** depend on the plugin API from Maven Central and npm, and follow the plugin
   development guide in the documentation.
