@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Massimo Antonini
+# SPDX-License-Identifier: MPL-2.0
+name: Mosaikit plugin API
+description: >-
+  Puts dev.mosaikit:mosaikit-kernel-api in the local Maven repository: from Maven Central when the
+  version is published there, otherwise built from the Mosaikit repository (the tag of the version,
+  or main for a -SNAPSHOT). Needs Java 25 and Maven on the runner.
+inputs:
+  version:
+    description: Version of the plugin API, for example 0.2.0 or 0.3.0-SNAPSHOT
+    required: true
+outputs:
+  jar:
+    description: Path of the JAR, which also holds PackageSigningTool
+    value: ${{ steps.api.outputs.jar }}
+runs:
+  using: composite
+  steps:
+    - id: api
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        if [[ "$VERSION" != *-SNAPSHOT ]] && mvn --batch-mode --quiet --no-transfer-progress \
+            dependency:get -Dartifact="dev.mosaikit:mosaikit-kernel-api:$VERSION" -Dtransitive=false; then
+          echo "mosaikit-kernel-api $VERSION from Maven Central"
+        else
+          ref=main; [[ "$VERSION" == *-SNAPSHOT ]] || ref="v$VERSION"
+          echo "mosaikit-kernel-api $VERSION built from mosaikit/mosaikit@$ref"
+          git clone --quiet --depth 1 --branch "$ref" https://github.com/mosaikit/mosaikit.git "$RUNNER_TEMP/mosaikit"
+          (cd "$RUNNER_TEMP/mosaikit" && ./mvnw --batch-mode --quiet --no-transfer-progress \
+            -pl sdk/java -am install -DskipTests -Dskip.npm -Dspotless.apply.skip=true)
+        fi
+        echo "jar=$HOME/.m2/repository/dev/mosaikit/mosaikit-kernel-api/$VERSION/mosaikit-kernel-api-$VERSION.jar" >> "$GITHUB_OUTPUT"

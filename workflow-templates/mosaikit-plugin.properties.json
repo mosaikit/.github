@@ -1,0 +1,7 @@
+{
+  "name": "Mosaikit plugin",
+  "description": "Build, test, check against the kernel and release a signed Mosaikit plugin.",
+  "iconName": "mosaikit",
+  "categories": ["Java", "JavaScript"],
+  "filePatterns": ["manifest.yaml$"]
+}
