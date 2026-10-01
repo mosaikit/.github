@@ -1,0 +1,200 @@
+# SPDX-FileCopyrightText: 2026 Massimo Antonini
+# SPDX-License-Identifier: MPL-2.0
+#
+# Reusable workflow of a Mosaikit plugin: build and test, check that the kernel accepts the package,
+# and on a tag vX.Y.Z sign the package and publish it in a GitHub release. A plugin repository calls
+# it from .github/workflows/ci.yml (see workflow-templates/mosaikit-plugin.yml):
+#
+#   jobs:
+#     plugin:
+#       uses: mosaikit/.github/.github/workflows/plugin.yml@main
+#       with:
+#         mosaikit-version: 0.2.0
+#         kernel-images: '["v0.2.0"]'
+#         signing-key-name: acme
+#       secrets: inherit
+#
+# The package is <id>-<version>.zip, from the id and version of manifest.yaml. A plugin with a
+# pom.xml is built with Maven (the package is the zip in target/); a plugin without one is zipped as
+# it is (manifest.yaml, web/, db/, lib/, README.md), after npm build when it has a package.json.
+
+name: Mosaikit plugin
+
+on:
+  workflow_call:
+    inputs:
+      mosaikit-version:
+        description: Version of the Mosaikit plugin API that the plugin compiles against
+        type: string
+        required: true
+      kernel-images:
+        description: >-
+          JSON list of tags of ghcr.io/mosaikit/mosaikit to install the package into, for example
+          '["v0.2.0", "v0.3.0"]'; tags that do not exist yet are skipped with a warning
+        type: string
+        default: '[]'
+      signing-key-name:
+        description: >-
+          Name of the publisher key: its public key is signing/<name>.pub.pem in the repository, its
+          private key the secret PLUGIN_SIGNING_KEY. Empty: the package is not signed.
+        type: string
+        default: ''
+      java-version:
+        type: string
+        default: '25'
+      node-version:
+        type: string
+        default: '24'
+    secrets:
+      PLUGIN_SIGNING_KEY:
+        description: Private key (PEM) of the publisher, from PackageSigningTool keygen
+        required: false
+    outputs:
+      package:
+        description: File name of the package
+        value: ${{ jobs.build.outputs.package }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      package: ${{ steps.package.outputs.file }}
+      name: ${{ steps.manifest.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-
+
+      - name: Read the manifest
+        id: manifest
+        run: |
+          id="$(yq -r '.id' manifest.yaml)"; version="$(yq -r '.version' manifest.yaml)"
+          name="$(yq -r '.name' manifest.yaml)"
+          if [[ -z "$id" || "$id" == null || -z "$version" || "$version" == null ]]; then
+            echo "::error file=manifest.yaml::id and version are required"; exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error file=manifest.yaml::the tag $GITHUB_REF_NAME does not match the version $version"; exit 1
+          fi
+          { echo "id=$id"; echo "version=$version"; echo "name=$name"; } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        if: hashFiles('package.json') != ''
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - name: Frontend
+        if: hashFiles('package.json') != ''
+        run: |
+          npm ci
+          npm run build --if-present
+          npm test --if-present
+
+      - name: Plugin API
+        if: hashFiles('pom.xml') != '' || (inputs.signing-key-name != '' && startsWith(github.ref, 'refs/tags/v'))
+        id: api
+        uses: mosaikit/.github/actions/kernel-api@main
+        with:
+          version: ${{ inputs.mosaikit-version }}
+      - name: Backend
+        if: hashFiles('pom.xml') != ''
+        run: mvn --batch-mode --no-transfer-progress -Dmosaikit.version="${{ inputs.mosaikit-version }}" verify
+
+      - name: Package
+        id: package
+        env:
+          ID: ${{ steps.manifest.outputs.id }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+        run: |
+          mkdir -p dist
+          file="$ID-$VERSION.zip"
+          if [[ -f pom.xml ]]; then
+            built=(target/*.zip)
+            [[ -f "${built[0]}" ]] || { echo "::error::the Maven build wrote no zip to target/"; exit 1; }
+            cp "${built[0]}" "dist/$file"
+          else
+            parts=(); for p in manifest.yaml web db lib README.md; do [[ -e "$p" ]] && parts+=("$p"); done
+            zip -q -r -X "dist/$file" "${parts[@]}"
+          fi
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+
+      - name: Sign the package
+        if: inputs.signing-key-name != '' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          KEY_NAME: ${{ inputs.signing-key-name }}
+          PRIVATE_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          JAR: ${{ steps.api.outputs.jar }}
+        run: |
+          [[ -n "$PRIVATE_KEY" ]] || { echo "::error::the secret PLUGIN_SIGNING_KEY is not set"; exit 1; }
+          [[ -f "signing/$KEY_NAME.pub.pem" ]] || { echo "::error::signing/$KEY_NAME.pub.pem is missing"; exit 1; }
+          keys="$RUNNER_TEMP/keys"; trusted="$RUNNER_TEMP/trusted"; mkdir -p "$keys" "$trusted"
+          cp "signing/$KEY_NAME.pub.pem" "$keys/" ; cp "signing/$KEY_NAME.pub.pem" "$trusted/"
+          printf '%s\n' "$PRIVATE_KEY" > "$keys/$KEY_NAME.key.pem"
+          tool=(java -cp "$JAR" dev.mosaikit.kernel.api.signature.PackageSigningTool)
+          "${tool[@]}" sign "$keys/$KEY_NAME" dist
+          "${tool[@]}" verify "$trusted" dist
+          rm -f "$keys/$KEY_NAME.key.pem"
+
+      - name: Checksum
+        run: (cd dist && sha256sum ./*.zip | sed 's# \./# #' > "${{ steps.package.outputs.file }}.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-package
+          path: dist/
+
+  # The kernel accepts the package: a derived image installs it and runs `mosaikit build`, which
+  # checks the manifest and its platform range and builds the Java code into the kernel.
+  compatibility:
+    needs: build
+    if: inputs.kernel-images != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel: ${{ fromJSON(inputs.kernel-images) }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: plugin-package
+          path: dist
+      - name: Install into ghcr.io/mosaikit/mosaikit:${{ matrix.kernel }}
+        env:
+          IMAGE: ghcr.io/mosaikit/mosaikit:${{ matrix.kernel }}
+        run: |
+          if ! docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "::warning::$IMAGE does not exist yet: skipped"; exit 0
+          fi
+          printf 'FROM %s\nCOPY --chown=185 *.zip /opt/mosaikit/plugins/\nRUN /opt/mosaikit/mosaikit build\n' "$IMAGE" > dist/Containerfile
+          docker build --file dist/Containerfile dist
+
+  release:
+    needs: [build, compatibility]
+    if: >-
+      always() && startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success' &&
+      (needs.compatibility.result == 'success' || needs.compatibility.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: plugin-package
+          path: dist
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ needs.build.outputs.name }}
+        run: |
+          pre=(); [[ "$GITHUB_REF_NAME" == *-* ]] && pre=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.sha256 --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --title "$NAME $GITHUB_REF_NAME" --generate-notes "${pre[@]}"

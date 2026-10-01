@@ -11,3 +11,14 @@ Shared configuration of the [Mosaikit organization](https://github.com/mosaikit)
   repository.
 
 A repository overrides any of these files by adding its own copy.
+
+## Workflows for plugins
+
+- [`.github/workflows/plugin.yml`](.github/workflows/plugin.yml) is the reusable workflow of a
+  plugin: build and test, installation into the kernel images listed in `kernel-images`, and on a
+  tag `vX.Y.Z` the signed package `<id>-<version>.zip` in a GitHub release.
+- [`actions/kernel-api`](actions/kernel-api/action.yml) puts the plugin API in the local Maven
+  repository, from Maven Central or built from the Mosaikit repository.
+- [`workflow-templates/mosaikit-plugin.yml`](workflow-templates/mosaikit-plugin.yml) appears in
+  **Actions → New workflow** of every repository of the organization; `@mosaikit/create-plugin`
+  writes the same file into new plugins.
