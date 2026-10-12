@@ -12,5 +12,5 @@
 - [ ] Tests cover the change
 - [ ] The documentation is updated, if the behaviour changes
 - [ ] `CHANGELOG.md` has an entry, if the change is visible to users
-- [ ] The plugin API stays compatible, or the break is agreed in an issue
+- [ ] The extension API stays compatible, or the break is agreed in an issue
 - [ ] Every commit is signed off (`git commit -s`)

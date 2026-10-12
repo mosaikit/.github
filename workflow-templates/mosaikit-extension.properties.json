@@ -1,0 +1,7 @@
+{
+  "name": "Mosaikit extension",
+  "description": "Build, test, check against the kernel and release a signed Mosaikit extension.",
+  "iconName": "mosaikit",
+  "categories": ["Java", "JavaScript"],
+  "filePatterns": ["manifest.yaml$"]
+}

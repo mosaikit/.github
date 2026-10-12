@@ -1,30 +1,30 @@
 # SPDX-FileCopyrightText: 2026 Massimo Antonini
 # SPDX-License-Identifier: MPL-2.0
 #
-# Reusable workflow of a Mosaikit plugin: build and test, check that the kernel accepts the package,
-# and on a tag vX.Y.Z sign the package and publish it in a GitHub release. A plugin repository calls
-# it from .github/workflows/ci.yml (see workflow-templates/mosaikit-plugin.yml):
+# Reusable workflow of a Mosaikit extension: build and test, check that the kernel accepts the package,
+# and on a tag vX.Y.Z sign the package and publish it in a GitHub release. An extension repository calls
+# it from .github/workflows/ci.yml (see workflow-templates/mosaikit-extension.yml):
 #
 #   jobs:
-#     plugin:
-#       uses: mosaikit/.github/.github/workflows/plugin.yml@main
+#     extension:
+#       uses: mosaikit/.github/.github/workflows/extension.yml@main
 #       with:
 #         mosaikit-version: 0.2.0
 #         kernel-images: '["v0.2.0"]'
 #         signing-key-name: acme
 #       secrets: inherit
 #
-# The package is <id>-<version>.zip, from the id and version of manifest.yaml. A plugin with a
-# pom.xml is built with Maven (the package is the zip in target/); a plugin without one is zipped as
+# The package is <id>-<version>.zip, from the id and version of manifest.yaml. An extension with a
+# pom.xml is built with Maven (the package is the zip in target/); an extension without one is zipped as
 # it is (manifest.yaml, web/, db/, lib/, README.md), after npm build when it has a package.json.
 
-name: Mosaikit plugin
+name: Mosaikit extension
 
 on:
   workflow_call:
     inputs:
       mosaikit-version:
-        description: Version of the Mosaikit plugin API that the plugin compiles against
+        description: Version of the Mosaikit extension API that the extension compiles against
         type: string
         required: true
       kernel-images:
@@ -36,7 +36,7 @@ on:
       signing-key-name:
         description: >-
           Name of the publisher key: its public key is signing/<name>.pub.pem in the repository, its
-          private key the secret PLUGIN_SIGNING_KEY. Empty: the package is not signed.
+          private key the secret EXTENSION_SIGNING_KEY. Empty: the package is not signed.
         type: string
         default: ''
       java-version:
@@ -46,7 +46,7 @@ on:
         type: string
         default: '24'
     secrets:
-      PLUGIN_SIGNING_KEY:
+      EXTENSION_SIGNING_KEY:
         description: Private key (PEM) of the publisher, from PackageSigningTool keygen
         required: false
     outputs:
@@ -99,7 +99,7 @@ jobs:
           if [[ -f package-lock.json ]]; then npm ci; else npm install --no-audit --no-fund; fi
           npm run build --if-present
 
-      - name: Plugin API
+      - name: Extension API
         if: hashFiles('pom.xml') != '' || (inputs.signing-key-name != '' && startsWith(github.ref, 'refs/tags/v'))
         id: api
         uses: mosaikit/.github/actions/kernel-api@main
@@ -110,7 +110,7 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress -Dmosaikit.version="${{ inputs.mosaikit-version }}" verify
 
       - name: Tests on the bench
-        # The Playwright tests of the plugin on the bench of @mosaikit/testing (ADR-0035 of
+        # The Playwright tests of the extension on the bench of @mosaikit/testing (ADR-0035 of
         # mosaikit/mosaikit), after the build: they install what was built.
         if: hashFiles('playwright.config.ts') != ''
         run: |
@@ -142,10 +142,10 @@ jobs:
         if: inputs.signing-key-name != '' && startsWith(github.ref, 'refs/tags/v')
         env:
           KEY_NAME: ${{ inputs.signing-key-name }}
-          PRIVATE_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PRIVATE_KEY: ${{ secrets.EXTENSION_SIGNING_KEY }}
           JAR: ${{ steps.api.outputs.jar }}
         run: |
-          [[ -n "$PRIVATE_KEY" ]] || { echo "::error::the secret PLUGIN_SIGNING_KEY is not set"; exit 1; }
+          [[ -n "$PRIVATE_KEY" ]] || { echo "::error::the secret EXTENSION_SIGNING_KEY is not set"; exit 1; }
           [[ -f "signing/$KEY_NAME.pub.pem" ]] || { echo "::error::signing/$KEY_NAME.pub.pem is missing"; exit 1; }
           keys="$RUNNER_TEMP/keys"; trusted="$RUNNER_TEMP/trusted"; mkdir -p "$keys" "$trusted"
           cp "signing/$KEY_NAME.pub.pem" "$keys/" ; cp "signing/$KEY_NAME.pub.pem" "$trusted/"
@@ -160,7 +160,7 @@ jobs:
           (cd packages && sha256sum ./*.zip | sed 's# \./# #' > "${{ steps.package.outputs.file }}.sha256")
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: plugin-package
+          name: extension-package
           path: packages/
 
   # The kernel accepts the package: a derived image installs it and runs `mosaikit build`, which
@@ -176,7 +176,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: plugin-package
+          name: extension-package
           path: packages
       - name: Install into ghcr.io/mosaikit/mosaikit:${{ matrix.kernel }}
         env:
@@ -185,7 +185,7 @@ jobs:
           if ! docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
             echo "::warning::$IMAGE does not exist yet: skipped"; exit 0
           fi
-          printf 'FROM %s\nCOPY --chown=185 *.zip /opt/mosaikit/plugins/\nRUN /opt/mosaikit/mosaikit build\n' "$IMAGE" > packages/Containerfile
+          printf 'FROM %s\nCOPY --chown=185 *.zip /opt/mosaikit/extensions/\nRUN /opt/mosaikit/mosaikit build\n' "$IMAGE" > packages/Containerfile
           docker build --file packages/Containerfile packages
 
   release:
@@ -199,7 +199,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: plugin-package
+          name: extension-package
           path: packages
       - name: GitHub release
         env:

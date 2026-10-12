@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Massimo Antonini
 # SPDX-License-Identifier: MPL-2.0
-name: Mosaikit plugin API
+name: Mosaikit extension API
 description: >-
   Puts io.github.mosaikit:mosaikit-kernel-api in the local Maven repository: from Maven Central when the
   version is published there, from the pre-release "snapshot" of the Mosaikit repository for a
@@ -8,8 +8,14 @@ description: >-
   have the group dev.mosaikit, which is still found.
 inputs:
   version:
-    description: Version of the plugin API, for example 0.2.0 or 0.3.0-SNAPSHOT
+    description: Version of the extension API, for example 0.2.0 or 0.3.0-SNAPSHOT
     required: true
+  installation:
+    description: >-
+      true to also install the installation of Mosaikit
+      (io.github.mosaikit:mosaikit-distributions:zip:installation), for products that build their
+      distributions on it; from the snapshot only, for now
+    default: 'false'
 outputs:
   jar:
     description: Path of the JAR, which also holds PackageSigningTool
@@ -21,6 +27,7 @@ runs:
       shell: bash
       env:
         VERSION: ${{ inputs.version }}
+        INSTALLATION: ${{ inputs.installation }}
       run: |
         snapshot=https://github.com/mosaikit/mosaikit/releases/download/snapshot
         fetch() { curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$1" "$snapshot/$1"; }
@@ -36,17 +43,26 @@ runs:
             -DpomFile="$RUNNER_TEMP/mosaikit-parent-$VERSION.pom" -Dpackaging=pom
           "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-kernel-api-$VERSION.jar" \
             -DpomFile="$RUNNER_TEMP/mosaikit-kernel-api-$VERSION.pom"
-          # The parent of plugins (MK-051 there), for the plugins whose POM names it.
-          if fetch "mosaikit-plugin-parent-$VERSION.pom"; then
-            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-plugin-parent-$VERSION.pom" \
-              -DpomFile="$RUNNER_TEMP/mosaikit-plugin-parent-$VERSION.pom" -Dpackaging=pom
+          # The parent of extensions (MK-051 there), for the extensions whose POM names it.
+          if fetch "mosaikit-extension-parent-$VERSION.pom"; then
+            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-extension-parent-$VERSION.pom" \
+              -DpomFile="$RUNNER_TEMP/mosaikit-extension-parent-$VERSION.pom" -Dpackaging=pom
+          fi
+          # The installation, on which products build their distributions.
+          if [[ "$INSTALLATION" == true ]] && fetch "mosaikit-distributions-$VERSION.pom" \
+              && fetch "mosaikit-installation-$VERSION.zip"; then
+            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-distributions-$VERSION.pom" \
+              -DpomFile="$RUNNER_TEMP/mosaikit-distributions-$VERSION.pom" -Dpackaging=pom
+            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-installation-$VERSION.zip" \
+              -DgroupId=io.github.mosaikit -DartifactId=mosaikit-distributions -Dversion="$VERSION" \
+              -Dpackaging=zip -Dclassifier=installation -DgeneratePom=false
           fi
         else
           ref=main; [[ "$VERSION" == *-SNAPSHOT ]] || ref="v$VERSION"
           echo "mosaikit-kernel-api $VERSION built from mosaikit/mosaikit@$ref"
           git clone --quiet --depth 1 --branch "$ref" https://github.com/mosaikit/mosaikit.git "$RUNNER_TEMP/mosaikit"
           (cd "$RUNNER_TEMP/mosaikit" && ./mvnw --batch-mode --quiet --no-transfer-progress \
-            -pl sdk/java,sdk/plugin-parent -am install -DskipTests -Dskip.npm -Dspotless.apply.skip=true)
+            -pl sdk/java,sdk/extension-parent -am install -DskipTests -Dskip.npm -Dspotless.apply.skip=true)
         fi
         for group in io/github/mosaikit dev/mosaikit; do
           jar="$HOME/.m2/repository/$group/mosaikit-kernel-api/$VERSION/mosaikit-kernel-api-$VERSION.jar"

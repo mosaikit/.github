@@ -37,7 +37,7 @@ Every release of the core includes a software bill of materials (CycloneDX) and 
 files, signed with [Sigstore](https://www.sigstore.dev/). The release notes explain how to verify
 them with `cosign`.
 
-## Plugins
+## Extensions
 
 This policy covers the repositories of the Mosaikit organization. Vulnerabilities in third-party
-plugins should be reported to their authors.
+extensions should be reported to their authors.
