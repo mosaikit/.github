@@ -12,9 +12,10 @@ inputs:
     required: true
   installation:
     description: >-
-      true to also install the installation of Mosaikit
-      (io.github.mosaikit:mosaikit-distributions:zip:installation), for products that build their
-      distributions on it; from the snapshot only, for now
+      true to also install the distributions of Mosaikit
+      (io.github.mosaikit:mosaikit-distributions:zip, classifiers installation, portable-tools,
+      docker and helm), for products that build their distributions on them; from the snapshot
+      only, for now
     default: 'false'
 outputs:
   jar:
@@ -48,14 +49,16 @@ runs:
             "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-extension-parent-$VERSION.pom" \
               -DpomFile="$RUNNER_TEMP/mosaikit-extension-parent-$VERSION.pom" -Dpackaging=pom
           fi
-          # The installation, on which products build their distributions.
-          if [[ "$INSTALLATION" == true ]] && fetch "mosaikit-distributions-$VERSION.pom" \
-              && fetch "mosaikit-installation-$VERSION.zip"; then
+          # The distributions, on which products build their own.
+          if [[ "$INSTALLATION" == true ]] && fetch "mosaikit-distributions-$VERSION.pom"; then
             "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-distributions-$VERSION.pom" \
               -DpomFile="$RUNNER_TEMP/mosaikit-distributions-$VERSION.pom" -Dpackaging=pom
-            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-installation-$VERSION.zip" \
-              -DgroupId=io.github.mosaikit -DartifactId=mosaikit-distributions -Dversion="$VERSION" \
-              -Dpackaging=zip -Dclassifier=installation -DgeneratePom=false
+            for classifier in installation portable-tools docker helm; do
+              fetch "mosaikit-$classifier-$VERSION.zip"
+              "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-$classifier-$VERSION.zip" \
+                -DgroupId=io.github.mosaikit -DartifactId=mosaikit-distributions -Dversion="$VERSION" \
+                -Dpackaging=zip -Dclassifier="$classifier" -DgeneratePom=false
+            done
           fi
         else
           ref=main; [[ "$VERSION" == *-SNAPSHOT ]] || ref="v$VERSION"
