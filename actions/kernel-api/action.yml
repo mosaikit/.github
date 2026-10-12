@@ -3,8 +3,8 @@
 name: Mosaikit plugin API
 description: >-
   Puts io.github.mosaikit:mosaikit-kernel-api in the local Maven repository: from Maven Central when the
-  version is published there, otherwise built from the Mosaikit repository (the tag of the version,
-  or main for a -SNAPSHOT). Needs Java 25 and Maven on the runner. Versions built before ADR-0025
+  version is published there, from the pre-release "snapshot" of the Mosaikit repository for a
+  -SNAPSHOT, otherwise built from the Mosaikit repository (the tag of the version, or main). Needs Java 25 and Maven on the runner. Versions built before ADR-0025
   have the group dev.mosaikit, which is still found.
 inputs:
   version:
@@ -22,9 +22,20 @@ runs:
       env:
         VERSION: ${{ inputs.version }}
       run: |
+        snapshot=https://github.com/mosaikit/mosaikit/releases/download/snapshot
+        fetch() { curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$1" "$snapshot/$1"; }
         if [[ "$VERSION" != *-SNAPSHOT ]] && mvn --batch-mode --quiet --no-transfer-progress \
             dependency:get -Dartifact="io.github.mosaikit:mosaikit-kernel-api:$VERSION" -Dtransitive=false; then
           echo "mosaikit-kernel-api $VERSION from Maven Central"
+        elif [[ "$VERSION" == *-SNAPSHOT ]] && fetch "mosaikit-parent-$VERSION.pom" \
+            && fetch "mosaikit-kernel-api-$VERSION.pom" && fetch "mosaikit-kernel-api-$VERSION.jar"; then
+          # The snapshot of main (ADR-0035 of mosaikit/mosaikit): no build of Mosaikit needed.
+          echo "mosaikit-kernel-api $VERSION from the snapshot of main"
+          install=(mvn --batch-mode --quiet --no-transfer-progress install:install-file)
+          "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-parent-$VERSION.pom" \
+            -DpomFile="$RUNNER_TEMP/mosaikit-parent-$VERSION.pom" -Dpackaging=pom
+          "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-kernel-api-$VERSION.jar" \
+            -DpomFile="$RUNNER_TEMP/mosaikit-kernel-api-$VERSION.pom"
         else
           ref=main; [[ "$VERSION" == *-SNAPSHOT ]] || ref="v$VERSION"
           echo "mosaikit-kernel-api $VERSION built from mosaikit/mosaikit@$ref"
