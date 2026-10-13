@@ -2,10 +2,10 @@
 
 # Mosaikit
 
-**An open, modular platform for building web applications out of plugins.**
+**An open, modular platform for building web applications out of extensions.**
 
 The core gives you the foundations every application needs.
-Plugins add the rest: screens, services and data, piece by piece, like the tiles of a mosaic.
+Extensions add the rest: screens, services and data, piece by piece, like the tiles of a mosaic.
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg)](https://www.mozilla.org/MPL/2.0/)
 
@@ -17,19 +17,19 @@ Plugins add the rest: screens, services and data, piece by piece, like the tiles
 
 Most applications rebuild the same foundations before they get to what makes them different:
 sign-in, users, organizations, languages, themes. Mosaikit ships those once, in a small and
-well-tested core, and lets everything else arrive as plugins that extend the frontend, the
+well-tested core, and lets everything else arrive as extensions that extend the frontend, the
 backend services and the database.
 
-- **Plugins all the way down.** A plugin can extend the core and other plugins, so a feature can be
+- **Extensions all the way down.** An extension can extend the core and other extensions, so a feature can be
   extended without being forked.
-- **Bring your own frontend framework.** Plugin user interfaces are Web Components: each team picks
+- **Bring your own frontend framework.** Extension user interfaces are Web Components: each team picks
   the framework it prefers.
 - **Multi-tenant from day one.** Organizations, users, local sign-in and federation with external
   identity providers are part of the core.
 - **Runs where you need it.** A container image and a Helm chart for Kubernetes, and a portable
   distribution for a single machine.
 - **Open, and open to business.** The core is licensed under MPL-2.0: you can build open-source or
-  commercial plugins on top of it.
+  commercial extensions on top of it.
 - **Verifiable releases.** Every release comes with a software bill of materials (CycloneDX) and
   checksums signed with Sigstore.
 
@@ -37,12 +37,12 @@ backend services and the database.
 
 | Repository | What it is |
 | --- | --- |
-| [**mosaikit**](https://github.com/mosaikit/mosaikit) | The core: kernel, plugin API (Java and TypeScript SDKs), container image, Helm chart, portable distribution and documentation |
+| [**mosaikit**](https://github.com/mosaikit/mosaikit) | The core: kernel, extension API (Java and TypeScript SDKs), container image, Helm chart, portable distribution and documentation |
 | [**.github**](https://github.com/mosaikit/.github) | This profile and the community files shared by every repository of the organization |
-| [**mosaikit.github.io**](https://github.com/mosaikit/mosaikit.github.io) | The [site](https://mosaikit.github.io/) of the project, with the [list of plugins](https://mosaikit.github.io/plugins/) and the signed catalog of the plugins (`https://mosaikit.github.io/catalog/`) to add to an installation |
+| [**mosaikit.github.io**](https://github.com/mosaikit/mosaikit.github.io) | The [site](https://mosaikit.github.io/) of the project, with the [list of extensions](https://mosaikit.github.io/extensions/) and the signed catalog of the extensions (`https://mosaikit.github.io/catalog/`) to add to an installation |
 
-Coming next: the first **official plugins**, published in the catalog and listed in the
-[list of plugins](https://mosaikit.github.io/plugins/) of the site.
+Coming next: the first **official extensions**, published in the catalog and listed in the
+[list of extensions](https://mosaikit.github.io/extensions/) of the site.
 
 ## Get started
 
@@ -50,8 +50,8 @@ Coming next: the first **official plugins**, published in the catalog and listed
   [releases](https://github.com/mosaikit/mosaikit/releases) — container image, Helm chart and
   portable archives for Windows, macOS and Linux.
 - **Read the docs:** the [documentation](https://mosaikit.github.io/mosaikit/)
-  covers installation, configuration and plugin development.
-- **Build a plugin:** depend on the plugin API from Maven Central and npm, and follow the plugin
+  covers installation, configuration and extension development.
+- **Build an extension:** depend on the extension API from Maven Central and npm, and follow the extension
   development guide in the documentation.
 
 ## Get involved

@@ -7,7 +7,7 @@
 - **Security vulnerabilities:** follow the [security policy](SECURITY.md) and never use public
   channels.
 - **Documentation:** the [documentation of the core](https://github.com/mosaikit/mosaikit/tree/main/docs)
-  covers installation, configuration and plugin development.
+  covers installation, configuration and extension development.
 
 Mosaikit is maintained by volunteers: answers come as soon as possible, but without guaranteed
 response times.

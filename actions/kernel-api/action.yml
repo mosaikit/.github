@@ -1,15 +1,22 @@
 # SPDX-FileCopyrightText: 2026 Massimo Antonini
 # SPDX-License-Identifier: MPL-2.0
-name: Mosaikit plugin API
+name: Mosaikit extension API
 description: >-
   Puts io.github.mosaikit:mosaikit-kernel-api in the local Maven repository: from Maven Central when the
-  version is published there, otherwise built from the Mosaikit repository (the tag of the version,
-  or main for a -SNAPSHOT). Needs Java 25 and Maven on the runner. Versions built before ADR-0025
+  version is published there, from the pre-release "snapshot" of the Mosaikit repository for a
+  -SNAPSHOT, otherwise built from the Mosaikit repository (the tag of the version, or main). Needs Java 25 and Maven on the runner. Versions built before ADR-0025
   have the group dev.mosaikit, which is still found.
 inputs:
   version:
-    description: Version of the plugin API, for example 0.2.0 or 0.3.0-SNAPSHOT
+    description: Version of the extension API, for example 0.2.0 or 0.3.0-SNAPSHOT
     required: true
+  installation:
+    description: >-
+      true to also install the distributions of Mosaikit
+      (io.github.mosaikit:mosaikit-distributions:zip, classifiers installation, portable-tools,
+      docker and helm), for products that build their distributions on them; from the snapshot
+      only, for now
+    default: 'false'
 outputs:
   jar:
     description: Path of the JAR, which also holds PackageSigningTool
@@ -21,16 +28,44 @@ runs:
       shell: bash
       env:
         VERSION: ${{ inputs.version }}
+        INSTALLATION: ${{ inputs.installation }}
       run: |
+        snapshot=https://github.com/mosaikit/mosaikit/releases/download/snapshot
+        fetch() { curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$1" "$snapshot/$1"; }
         if [[ "$VERSION" != *-SNAPSHOT ]] && mvn --batch-mode --quiet --no-transfer-progress \
             dependency:get -Dartifact="io.github.mosaikit:mosaikit-kernel-api:$VERSION" -Dtransitive=false; then
           echo "mosaikit-kernel-api $VERSION from Maven Central"
+        elif [[ "$VERSION" == *-SNAPSHOT ]] && fetch "mosaikit-parent-$VERSION.pom" \
+            && fetch "mosaikit-kernel-api-$VERSION.pom" && fetch "mosaikit-kernel-api-$VERSION.jar"; then
+          # The snapshot of main (ADR-0035 of mosaikit/mosaikit): no build of Mosaikit needed.
+          echo "mosaikit-kernel-api $VERSION from the snapshot of main"
+          install=(mvn --batch-mode --quiet --no-transfer-progress install:install-file)
+          "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-parent-$VERSION.pom" \
+            -DpomFile="$RUNNER_TEMP/mosaikit-parent-$VERSION.pom" -Dpackaging=pom
+          "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-kernel-api-$VERSION.jar" \
+            -DpomFile="$RUNNER_TEMP/mosaikit-kernel-api-$VERSION.pom"
+          # The parent of extensions (MK-051 there), for the extensions whose POM names it.
+          if fetch "mosaikit-extension-parent-$VERSION.pom"; then
+            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-extension-parent-$VERSION.pom" \
+              -DpomFile="$RUNNER_TEMP/mosaikit-extension-parent-$VERSION.pom" -Dpackaging=pom
+          fi
+          # The distributions, on which products build their own.
+          if [[ "$INSTALLATION" == true ]] && fetch "mosaikit-distributions-$VERSION.pom"; then
+            "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-distributions-$VERSION.pom" \
+              -DpomFile="$RUNNER_TEMP/mosaikit-distributions-$VERSION.pom" -Dpackaging=pom
+            for classifier in installation portable-tools docker helm; do
+              fetch "mosaikit-$classifier-$VERSION.zip"
+              "${install[@]}" -Dfile="$RUNNER_TEMP/mosaikit-$classifier-$VERSION.zip" \
+                -DgroupId=io.github.mosaikit -DartifactId=mosaikit-distributions -Dversion="$VERSION" \
+                -Dpackaging=zip -Dclassifier="$classifier" -DgeneratePom=false
+            done
+          fi
         else
           ref=main; [[ "$VERSION" == *-SNAPSHOT ]] || ref="v$VERSION"
           echo "mosaikit-kernel-api $VERSION built from mosaikit/mosaikit@$ref"
           git clone --quiet --depth 1 --branch "$ref" https://github.com/mosaikit/mosaikit.git "$RUNNER_TEMP/mosaikit"
           (cd "$RUNNER_TEMP/mosaikit" && ./mvnw --batch-mode --quiet --no-transfer-progress \
-            -pl sdk/java -am install -DskipTests -Dskip.npm -Dspotless.apply.skip=true)
+            -pl sdk/java,sdk/extension-parent -am install -DskipTests -Dskip.npm -Dspotless.apply.skip=true)
         fi
         for group in io/github/mosaikit dev/mosaikit; do
           jar="$HOME/.m2/repository/$group/mosaikit-kernel-api/$VERSION/mosaikit-kernel-api-$VERSION.jar"

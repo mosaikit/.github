@@ -1,6 +1,6 @@
-# Build, test and release a Mosaikit plugin with the reusable workflow of the organization.
+# Build, test and release a Mosaikit extension with the reusable workflow of the organization.
 # A tag vX.Y.Z (equal to the version of manifest.yaml) publishes the signed package in a release.
-name: Plugin
+name: Extension
 
 on:
   push:
@@ -13,13 +13,13 @@ permissions:
   contents: write
 
 jobs:
-  plugin:
-    uses: mosaikit/.github/.github/workflows/plugin.yml@main
+  extension:
+    uses: mosaikit/.github/.github/workflows/extension.yml@main
     with:
-      # The plugin API the plugin compiles against, and the kernels to install it into.
+      # The extension API the extension compiles against, and the kernels to install it into.
       mosaikit-version: 0.2.0
       kernel-images: '["v0.2.0"]'
       # Uncomment to sign releases: public key in signing/<name>.pub.pem, private key in the
-      # secret PLUGIN_SIGNING_KEY (PackageSigningTool keygen).
+      # secret EXTENSION_SIGNING_KEY (PackageSigningTool keygen).
       # signing-key-name: my-key
     secrets: inherit

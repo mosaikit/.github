@@ -15,7 +15,7 @@ You do not need to write code to help:
 - **Propose features** with the feature request form. Explain the problem first: the best solution
   often comes out of the discussion.
 - **Improve the documentation**: fixing an unclear sentence is a valuable contribution.
-- **Write a plugin**: plugins are the heart of Mosaikit, and they do not need to live in this
+- **Write an extension**: extensions are the heart of Mosaikit, and they do not need to live in this
   organization.
 
 For security issues, do **not** open a public issue: follow the [security policy](SECURITY.md).
@@ -45,7 +45,7 @@ request. A maintainer reviews it once the checks are green.
   a short summary in the imperative mood (`Add tenant filter to the user list`).
 - **Licence headers:** source files carry an SPDX header with the copyright and the licence
   (`SPDX-License-Identifier: MPL-2.0`).
-- **Compatibility:** the plugin API follows semantic versioning. A change that breaks plugins needs
+- **Compatibility:** the extension API follows semantic versioning. A change that breaks extensions needs
   a new major version and must be discussed in an issue first.
 
 ## Sign-off (Developer Certificate of Origin)
