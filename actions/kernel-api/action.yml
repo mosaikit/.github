@@ -30,6 +30,9 @@ runs:
         VERSION: ${{ inputs.version }}
         INSTALLATION: ${{ inputs.installation }}
       run: |
+        # Outside the project: Maven would read its POM, whose parent may be the very artifact this
+        # action installs.
+        cd "$RUNNER_TEMP"
         snapshot=https://github.com/mosaikit/mosaikit/releases/download/snapshot
         fetch() { curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$1" "$snapshot/$1"; }
         if [[ "$VERSION" != *-SNAPSHOT ]] && mvn --batch-mode --quiet --no-transfer-progress \
